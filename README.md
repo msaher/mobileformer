@@ -1,3 +1,8 @@
+# Fork Information: Fixed all import and missing file issues.
+timm==0.6.12
+torch==1.12.0+cu113
+torchvision==0.13.0+cu113
+
 # Mobile-Former: Pytorch Implementation
 
 This is a PyTorch implementation of the paper [Mobile-Former: Bridging MobileNet and Transformer](https://arxiv.org/abs/2108.05895):
