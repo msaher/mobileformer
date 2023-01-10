@@ -1,7 +1,7 @@
 # Fork Information: Fixed all import and missing file issues.
-[`timm==0.6.12`]
-[`torch==1.12.0+cu113`]
-[`torchvision==0.13.0+cu113`]
+`timm==0.6.12`<br>
+`torch==1.12.0+cu113`<br>
+`torchvision==0.13.0+cu113`<br>
 
 # Mobile-Former: Pytorch Implementation
 
