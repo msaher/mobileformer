@@ -3,7 +3,7 @@
 A PyTorch impl of Dna blocks
 
 Paper: Mobile-Former: Bridging MobileNet and Transformer (CVPR 2022)
-       https://arxiv.org/abs/2108.05895 
+       https://arxiv.org/abs/2108.05895
 
 """
 
@@ -104,7 +104,7 @@ class DyReLU(nn.Module):
             a1 = (a1 - 0.5) * self.scale + 1.0 #  0.0 -- 2.0
             a2 = (a2 - 0.5) * self.scale       # -1.0 -- 1.0
             out = torch.max(out*a1, out*a2)
-            
+
         return out
 
 class HyperFunc(nn.Module):
@@ -176,7 +176,7 @@ class Local2GlobalAttn(nn.Module):
 
         self.q = nn.Linear(token_dim, inp)
         self.proj = nn.Linear(inp, token_dim)
-        
+
         self.layer_norm = nn.LayerNorm(token_dim)
         self.drop_path = DropPath(drop_path_rate)
 
@@ -214,10 +214,10 @@ class Local2Global(nn.Module):
             remove_proj_local=True,
         ):
         super(Local2Global, self).__init__()
-        print(f'L2G: {attn_num_heads} heads, inp: {inp}, token: {token_dim}')
+        # print(f'L2G: {attn_num_heads} heads, inp: {inp}, token: {token_dim}')
 
         self.num_heads = attn_num_heads
-        self.token_num = token_num 
+        self.token_num = token_num
         self.norm_pos = norm_pos
         self.block = block_type
         self.use_dynamic = use_dynamic
@@ -240,12 +240,12 @@ class Local2Global(nn.Module):
         self.proj = nn.Linear(inp, token_dim)
         self.layer_norm = nn.LayerNorm(token_dim)
         self.drop_path = DropPath(drop_path_rate)
-        
+
         self.remove_proj_local = remove_proj_local
         if self.remove_proj_local == False:
             self.k = nn.Conv2d(inp, inp, 1, 1, 0, bias=False)
             self.v = nn.Conv2d(inp, inp, 1, 1, 0, bias=False)
-            
+
 
     def forward(self, x):
         features, tokens = x # features: bs x C x H x W
@@ -256,26 +256,26 @@ class Local2Global(nn.Module):
         attn = None
 
         if 'mlp' in self.block:
-            t_sum = self.mlp(features.view(bs, C, -1)).permute(2, 0, 1) # T x bs x C            
+            t_sum = self.mlp(features.view(bs, C, -1)).permute(2, 0, 1) # T x bs x C
 
         if 'attn' in self.block:
             t = self.q(tokens).view(T, bs, self.num_heads, -1).permute(1, 2, 0, 3)  # from T x bs x Ct to bs x N x T x Ct/N
             if self.remove_proj_local:
                 k = features.view(bs, self.num_heads, -1, H*W)                          # bs x N x C/N x HW
                 attn = (t @ k) * self.scale                                             # bs x N x T x HW
-    
+
                 attn_out = attn.softmax(dim=-1)                 # bs x N x T x HW
                 attn_out = (attn_out @ k.transpose(-1, -2))     # bs x N x T x C/N (k: bs x N x C/N x HW)
                                                                 # note here: k=v without transform
             else:
                 k = self.k(features).view(bs, self.num_heads, -1, H*W)                          # bs x N x C/N x HW
-                v = self.v(features).view(bs, self.num_heads, -1, H*W)                          # bs x N x C/N x HW 
+                v = self.v(features).view(bs, self.num_heads, -1, H*W)                          # bs x N x C/N x HW
                 attn = (t @ k) * self.scale                                             # bs x N x T x HW
-    
+
                 attn_out = attn.softmax(dim=-1)                 # bs x N x T x HW
                 attn_out = (attn_out @ v.transpose(-1, -2))     # bs x N x T x C/N (k: bs x N x C/N x HW)
                                                                 # note here: k=v without transform
- 
+
             t_a = attn_out.permute(2, 0, 1, 3)              # T x bs x N x C/N
             t_a = t_a.reshape(T, bs, -1)
 
@@ -313,7 +313,7 @@ class GlobalBlock(nn.Module):
     ):
         super(GlobalBlock, self).__init__()
 
-        print(f'G2G: {attn_num_heads} heads')
+        # print(f'G2G: {attn_num_heads} heads')
 
         self.block = block_type
         self.num_heads = attn_num_heads
@@ -324,14 +324,14 @@ class GlobalBlock(nn.Module):
         self.ffn_exp = 2
 
         if self.use_ffn:
-            print('use ffn')
+            # print('use ffn')
             self.ffn = nn.Sequential(
                 nn.Linear(token_dim, token_dim * self.ffn_exp),
                 nn.GELU(),
                 nn.Linear(token_dim * self.ffn_exp, token_dim)
             )
             self.ffn_norm = nn.LayerNorm(token_dim)
-            
+
 
         if self.use_dynamic:
             self.alpha_scale = 2.0
@@ -340,7 +340,7 @@ class GlobalBlock(nn.Module):
                 h_sigmoid(),
             )
 
-        
+
         if 'mlp' in self.block:
             self.token_mlp = nn.Sequential(
                 nn.Linear(token_num, token_num*mlp_token_exp),
@@ -392,7 +392,7 @@ class GlobalBlock(nn.Module):
             tokens = tokens + t_ffn
             tokens = self.ffn_norm(tokens)
 
- 
+
         return tokens
 
 class Global2Local(nn.Module):
@@ -406,10 +406,10 @@ class Global2Local(nn.Module):
         attn_num_heads=2,
         use_dynamic=False,
         drop_path_rate=0.,
-        remove_proj_local=True, 
+        remove_proj_local=True,
     ):
         super(Global2Local, self).__init__()
-        print(f'G2L: {attn_num_heads} heads, inp: {inp}, token: {token_dim}')
+        # print(f'G2L: {attn_num_heads} heads, inp: {inp}, token: {token_dim}')
 
         self.token_num = token_num
         self.num_heads = attn_num_heads
@@ -438,7 +438,7 @@ class Global2Local(nn.Module):
         if self.remove_proj_local == False:
             self.q = nn.Conv2d(inp, inp, 1, 1, 0, bias=False)
             self.fuse = nn.Conv2d(inp, inp, 1, 1, 0, bias=False)
- 
+
     def forward(self, x):
         out, tokens = x
 
@@ -447,7 +447,7 @@ class Global2Local(nn.Module):
             v = self.proj(tokens)
             v = (v * alp).permute(1, 2, 0)
         else:
-            v = self.proj(tokens).permute(1, 2, 0)  # from T x bs x Ct -> T x bs x C -> bs x C x T 
+            v = self.proj(tokens).permute(1, 2, 0)  # from T x bs x Ct -> T x bs x C -> bs x C x T
 
         bs, C, H, W = out.shape
         if 'mlp' in self.block:
@@ -463,14 +463,14 @@ class Global2Local(nn.Module):
             attn = (q @ k) * self.scale                         # bs x N x HW x T
 
             attn_out = attn.softmax(dim=-1)                     # bs x N x HW x T
-            
+
             vh = v.view(bs, self.num_heads, -1, self.token_num) # bs x N x C/N x T
             attn_out = (attn_out @ vh.transpose(-1, -2))        # bs x N x HW x C/N
                                                                 # note here k != v
             g_a = attn_out.transpose(-1, -2).reshape(bs, C, H, W)   # bs x C x HW
 
             if self.remove_proj_local == False:
-                g_a = self.fuse(g_a)            
+                g_a = self.fuse(g_a)
 
             g_sum = g_sum + g_a if 'mlp' in self.block else g_a
 
@@ -510,7 +510,7 @@ class DnaBlock3(nn.Module):
     ):
         super(DnaBlock3, self).__init__()
 
-        print(f'block: {inp_res}, cnn-drop {cnn_drop_path_rate:.4f}, mlp-drop {drop_path_rate:.4f}')
+        # print(f'block: {inp_res}, cnn-drop {cnn_drop_path_rate:.4f}, mlp-drop {drop_path_rate:.4f}')
         if isinstance(exp_ratios, tuple):
             e1, e2 = exp_ratios
         else:
@@ -548,7 +548,7 @@ class DnaBlock3(nn.Module):
                     nn.Conv2d(inp*e1, oup, 1, 1, 0, groups=group_num, bias=False),
                     nn.BatchNorm2d(oup),
                 )
- 
+
         else:
             # conv (dw->pw->dw->pw)
             self.se_flag = se_flag
@@ -574,23 +574,23 @@ class DnaBlock3(nn.Module):
                     nn.BatchNorm2d(hidden_dim1),
                     ChannelShuffle(inp) if group_num > 1 else nn.Sequential()
                 )
- 
-            num_func = se_flag[0] 
+
+            num_func = se_flag[0]
             self.act1 = DyReLU(num_func=num_func, scale=2., serelu=True)
             self.hyper1 = HyperFunc(
-                token_dim, 
-                hidden_dim1 * num_func, 
-                sel_token_id=hyper_token_id, 
+                token_dim,
+                hidden_dim1 * num_func,
+                sel_token_id=hyper_token_id,
                 reduction_ratio=hyper_reduction_ratio
             ) if se_flag[0] > 0 else nn.Sequential()
-                
+
 
             self.conv2 = nn.Sequential(
                 nn.Conv2d(hidden_dim1, oup, 1, 1, 0, groups=group_num, bias=False),
                 nn.BatchNorm2d(oup),
             )
             num_func = -1
-            #num_func = 1 if se_flag[1] == 1 else -1 
+            #num_func = 1 if se_flag[1] == 1 else -1
             self.act2 = DyReLU(num_func=num_func, scale=2.)
 
 
@@ -612,30 +612,30 @@ class DnaBlock3(nn.Module):
                     nn.BatchNorm2d(hidden_dim2),
                     ChannelShuffle(oup) if group_num > 1 else nn.Sequential()
                 )
-           
+
             num_func = se_flag[2]
             self.act3 = DyReLU(num_func=num_func, scale=2., serelu=True)
             self.hyper3 = HyperFunc(
-                token_dim, 
-                hidden_dim2 * num_func, 
-                sel_token_id=hyper_token_id, 
+                token_dim,
+                hidden_dim2 * num_func,
+                sel_token_id=hyper_token_id,
                 reduction_ratio=hyper_reduction_ratio
             ) if se_flag[2] > 0 else nn.Sequential()
- 
+
 
             self.conv4 = nn.Sequential(
                 nn.Conv2d(hidden_dim2, oup, 1, 1, 0, groups=group_num, bias=False),
                 nn.BatchNorm2d(oup)
             )
-            num_func = 1 if se_flag[3] == 1 else -1 
+            num_func = 1 if se_flag[3] == 1 else -1
             self.act4 = DyReLU(num_func=num_func, scale=2.)
             self.hyper4 = HyperFunc(
-                token_dim, 
-                oup * num_func, 
-                sel_token_id=hyper_token_id, 
+                token_dim,
+                oup * num_func,
+                sel_token_id=hyper_token_id,
                 reduction_ratio=hyper_reduction_ratio
             ) if se_flag[3] > 0 else nn.Sequential()
- 
+
 
             self.drop_path = DropPath(cnn_drop_path_rate)
 
@@ -663,7 +663,7 @@ class DnaBlock3(nn.Module):
                 norm_pos=norm_pos,
                 drop_path_rate=drop_path_rate
             )
- 
+
             oup_res = inp_res // (stride * stride)
 
             self.global_local = Global2Local(
@@ -763,7 +763,7 @@ class DnaBlock(nn.Module):
     ):
         super(DnaBlock, self).__init__()
 
-        print(f'block: {inp_res}, cnn-drop {cnn_drop_path_rate:.4f}, mlp-drop {drop_path_rate:.4f}')
+        # print(f'block: {inp_res}, cnn-drop {cnn_drop_path_rate:.4f}, mlp-drop {drop_path_rate:.4f}')
         if isinstance(exp_ratios, tuple):
             e1, e2 = exp_ratios
         else:
@@ -799,15 +799,15 @@ class DnaBlock(nn.Module):
                 ChannelShuffle(group_num) if group_num > 1 else nn.Sequential()
             )
 
-            num_func = se_flag[0] 
+            num_func = se_flag[0]
             self.act1 = DyReLU(num_func=num_func, scale=2., serelu=True)
             self.hyper1 = HyperFunc(
-                token_dim, 
-                hidden_dim * num_func, 
-                sel_token_id=hyper_token_id, 
+                token_dim,
+                hidden_dim * num_func,
+                sel_token_id=hyper_token_id,
                 reduction_ratio=hyper_reduction_ratio
             ) if se_flag[0] > 0 else nn.Sequential()
-                
+
 
             self.conv2 = nn.Sequential(
                 nn.Conv2d(hidden_dim, hidden_dim, k1, stride, k1//2, groups=hidden_dim, bias=False),
@@ -816,27 +816,27 @@ class DnaBlock(nn.Module):
             num_func = se_flag[2] # note here we used index 2 to be consistent with block2
             self.act2 = DyReLU(num_func=num_func, scale=2., serelu=True)
             self.hyper2 = HyperFunc(
-                token_dim, 
-                hidden_dim * num_func, 
-                sel_token_id=hyper_token_id, 
+                token_dim,
+                hidden_dim * num_func,
+                sel_token_id=hyper_token_id,
                 reduction_ratio=hyper_reduction_ratio
             ) if se_flag[2] > 0 else nn.Sequential()
- 
+
 
             self.conv3 = nn.Sequential(
                 nn.Conv2d(hidden_dim, oup, 1, 1, 0, groups=group_num, bias=False),
                 nn.BatchNorm2d(oup),
                 ChannelShuffle(group_num) if group_num > 1 else nn.Sequential()
             )
-            num_func = 1 if se_flag[3] == 1 else -1 
+            num_func = 1 if se_flag[3] == 1 else -1
             self.act3 = DyReLU(num_func=num_func, scale=2.)
             self.hyper3 = HyperFunc(
-                token_dim, 
-                oup * num_func, 
-                sel_token_id=hyper_token_id, 
+                token_dim,
+                oup * num_func,
+                sel_token_id=hyper_token_id,
                 reduction_ratio=hyper_reduction_ratio
             ) if se_flag[3] > 0 else nn.Sequential()
- 
+
 
             self.drop_path = DropPath(cnn_drop_path_rate)
 
@@ -864,7 +864,7 @@ class DnaBlock(nn.Module):
                 norm_pos=norm_pos,
                 drop_path_rate=drop_path_rate
             )
- 
+
             oup_res = inp_res // (stride * stride)
 
             self.global_local = Global2Local(
@@ -939,15 +939,15 @@ class DnaBlock(nn.Module):
 ##########################################################################################################
 class MergeClassifier(nn.Module):
     def __init__(
-        self, inp, 
-        oup=1280, 
-        ch_exp=6, 
-        num_classes=1000, 
-        drop_rate=0., 
+        self, inp,
+        oup=1280,
+        ch_exp=6,
+        num_classes=1000,
+        drop_rate=0.,
         drop_branch=[0.0, 0.0],
-        group_num=1, 
-        token_dim=128, 
-        cls_token_num=1, 
+        group_num=1,
+        token_dim=128,
+        cls_token_num=1,
         last_act='relu',
         hyper_token_id=0,
         hyper_reduction_ratio=4
@@ -965,23 +965,23 @@ class MergeClassifier(nn.Module):
         )
 
         self.last_act = last_act
-        num_func = 2 if last_act == 'dyrelu' else 0 
+        num_func = 2 if last_act == 'dyrelu' else 0
         self.act = DyReLU(num_func=num_func, scale=2.)
- 
+
         self.hyper = HyperFunc(
-            token_dim, 
-            hidden_dim * num_func, 
-            sel_token_id=hyper_token_id, 
+            token_dim,
+            hidden_dim * num_func,
+            sel_token_id=hyper_token_id,
             reduction_ratio=hyper_reduction_ratio
         ) if last_act == 'dyrelu' else nn.Sequential()
- 
+
         self.avgpool = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
             h_swish()
         )
 
         if cls_token_num > 0:
-            cat_token_dim = token_dim * cls_token_num 
+            cat_token_dim = token_dim * cls_token_num
         elif cls_token_num == 0:
             cat_token_dim = token_dim
         else:
@@ -1014,7 +1014,7 @@ class MergeClassifier(nn.Module):
         x = x.view(x.size(0), -1)
 
         ps = [x]
-        
+
         if self.cls_token_num == 0:
             avg_token = torch.mean(F.relu6(tokens), dim=0)
             ps.append(avg_token)

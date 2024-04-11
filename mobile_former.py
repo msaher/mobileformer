@@ -1,7 +1,7 @@
 """Mobile-Former V1
 
 A PyTorch impl of MobileFromer-V1.
- 
+
 Paper: Mobile-Former: Bridging MobileNet and Transformer (CVPR 2022)
        https://arxiv.org/abs/2108.05895
 
@@ -18,7 +18,7 @@ from registry import register_model
 from dna_blocks import DnaBlock, DnaBlock3, _make_divisible, MergeClassifier, Local2Global
 
 __all__ = ['MobileFormer']
-  
+
 def _cfg(url='', **kwargs):
     return {
         'url': url, 'num_classes': 1000, 'input_size': (3, 224, 224), 'pool_size': (1, 1),
@@ -75,7 +75,7 @@ class MobileFormer(nn.Module):
         self.num_classes = num_classes
 
         #global tokens
-        self.tokens = nn.Embedding(token_num, token_dim) 
+        self.tokens = nn.Embedding(token_num, token_dim)
 
         # Stem
         self.stem = nn.Sequential(
@@ -94,23 +94,23 @@ class MobileFormer(nn.Module):
             block = eval(b)
 
             t = (t, t2)
-            output_channel = _make_divisible(c * width_mult, mdiv) if idx > 0 else _make_divisible(c * width_mult, 4) 
+            output_channel = _make_divisible(c * width_mult, mdiv) if idx > 0 else _make_divisible(c * width_mult, 4)
 
             drop_path_prob = drop_path_rate * (idx+1) / layer_num
             cnn_drop_path_prob = cnn_drop_path_rate * (idx+1) / layer_num
 
             layers.append(block(
-                input_channel, 
-                output_channel, 
-                s, 
-                t, 
+                input_channel,
+                output_channel,
+                s,
+                t,
                 dw_conv=dw_conv,
                 kernel_size=kernel_size,
                 group_num=group_num,
                 se_flag=se_flag,
                 hyper_token_id=hyper_token_id,
                 hyper_reduction_ratio=hyper_reduction_ratio,
-                token_dim=token_dim, 
+                token_dim=token_dim,
                 token_num=token_num,
                 inp_res=inp_res,
                 gbr_type=gbr_type,
@@ -122,7 +122,7 @@ class MobileFormer(nn.Module):
                 drop_path_rate=drop_path_prob,
                 cnn_drop_path_rate=cnn_drop_path_prob,
                 attn_num_heads=attn_num_heads,
-                remove_proj_local=remove_proj_local,        
+                remove_proj_local=remove_proj_local,
             ))
             input_channel = output_channel
 
@@ -131,17 +131,17 @@ class MobileFormer(nn.Module):
 
             for i in range(1, n):
                 layers.append(block(
-                    input_channel, 
-                    output_channel, 
-                    1, 
-                    t, 
+                    input_channel,
+                    output_channel,
+                    1,
+                    t,
                     dw_conv=dw_conv,
                     kernel_size=kernel_size,
                     group_num=group_num,
                     se_flag=se_flag,
                     hyper_token_id=hyper_token_id,
                     hyper_reduction_ratio=hyper_reduction_ratio,
-                    token_dim=token_dim, 
+                    token_dim=token_dim,
                     token_num=token_num,
                     inp_res=inp_res,
                     gbr_type=gbr_type,
@@ -174,8 +174,8 @@ class MobileFormer(nn.Module):
 
         # classifer
         self.classifier = MergeClassifier(
-            input_channel, 
-            oup=num_features, 
+            input_channel,
+            oup=num_features,
             ch_exp=last_exp,
             num_classes=num_classes,
             drop_rate=drop_rate,
@@ -213,23 +213,23 @@ class MobileFormer(nn.Module):
         z = self.tokens.weight
         tokens = z[None].repeat(bs, 1, 1).clone()
         tokens = tokens.permute(1, 0, 2)
- 
+
         # stem -> features -> classifier
         x = self.stem(x)
         x, tokens = self.features((x, tokens))
         tokens, attn = self.local_global((x, tokens))
         y = self.classifier((x, tokens))
 
-        return y
+        return tokens
 
 def _create_mobile_former(variant, pretrained=False, **kwargs):
     model = build_model_with_cfg(
-        MobileFormer, 
-        variant, 
+        MobileFormer,
+        variant,
         pretrained,
         default_cfg=default_cfgs['default'],
         **kwargs)
-    print(model)
+    # print(model)
 
     return model
 
@@ -254,7 +254,7 @@ common_model_kwargs = dict(
 def mobile_former_508m(pretrained=False, **kwargs):
 
     #stem = 24
-    dna_blocks = [ 
+    dna_blocks = [
         #b, e1,  c, n, s, e2
         ['DnaBlock3', 2,  24, 1, 1, 0], #1 112x112 (1)
         ['DnaBlock3', 6,  40, 1, 2, 4], #2 56x56 (2)
@@ -269,7 +269,7 @@ def mobile_former_508m(pretrained=False, **kwargs):
         ['DnaBlock',  6, 240, 1, 1, 4], #11
         ['DnaBlock',  6, 240, 1, 1, 4], #12
     ]
-   
+
     model_kwargs = dict(
         block_args = dna_blocks,
         width_mult = 1.0,
@@ -283,7 +283,7 @@ def mobile_former_508m(pretrained=False, **kwargs):
         token_num = 6,
         token_dim = 192,
         **common_model_kwargs,
-        **kwargs,   
+        **kwargs,
     )
     model = _create_mobile_former("mobile_former_508m", pretrained, **model_kwargs)
     return model
@@ -292,7 +292,7 @@ def mobile_former_508m(pretrained=False, **kwargs):
 def mobile_former_294m(pretrained=False, **kwargs):
 
     #stem = 16
-    dna_blocks = [ 
+    dna_blocks = [
         #b, e1,  c, n, s, e2
         ['DnaBlock3', 2,  16, 1, 1, 0], #1 112x112 (1)
         ['DnaBlock3', 6,  24, 1, 2, 4], #2 56x56 (2)
@@ -307,7 +307,7 @@ def mobile_former_294m(pretrained=False, **kwargs):
         ['DnaBlock',  6, 192, 1, 1, 4], #11
         ['DnaBlock',  6, 192, 1, 1, 4], #12
     ]
-  
+
     model_kwargs = dict(
         block_args = dna_blocks,
         width_mult = 1.0,
@@ -321,7 +321,7 @@ def mobile_former_294m(pretrained=False, **kwargs):
         token_num = 6,
         token_dim = 192,
         **common_model_kwargs,
-        **kwargs,   
+        **kwargs,
     )
     model = _create_mobile_former("mobile_former_294m", pretrained, **model_kwargs)
     return model
@@ -330,7 +330,7 @@ def mobile_former_294m(pretrained=False, **kwargs):
 def mobile_former_214m(pretrained=False, **kwargs):
 
     #stem = 12
-    dna_blocks = [ 
+    dna_blocks = [
         #b, e1,  c, n, s, e2
         ['DnaBlock3', 2,  12, 1, 1, 0], #1 112x112 (1)
         ['DnaBlock3', 6,  20, 1, 2, 4], #2 56x56 (2)
@@ -360,7 +360,7 @@ def mobile_former_214m(pretrained=False, **kwargs):
         token_num = 6,
         token_dim = 192,
         **common_model_kwargs,
-        **kwargs,   
+        **kwargs,
     )
     model = _create_mobile_former("mobile_former_214m", pretrained, **model_kwargs)
     return model
@@ -369,7 +369,7 @@ def mobile_former_214m(pretrained=False, **kwargs):
 def mobile_former_151m(pretrained=False, **kwargs):
 
     #stem = 12
-    dna_blocks = [ 
+    dna_blocks = [
         #b, e1,  c, n, s, e2
         ['DnaBlock3', 2,  12, 1, 1, 0], #1 112x112 (1)
         ['DnaBlock3', 6,  16, 1, 2, 4], #2 56x56 (2)
@@ -398,7 +398,7 @@ def mobile_former_151m(pretrained=False, **kwargs):
         token_num = 6,
         token_dim = 192,
         **common_model_kwargs,
-        **kwargs,   
+        **kwargs,
     )
     model = _create_mobile_former("mobile_former_151m", pretrained, **model_kwargs)
     return model
@@ -407,7 +407,7 @@ def mobile_former_151m(pretrained=False, **kwargs):
 def mobile_former_96m(pretrained=False, **kwargs):
 
     #stem = 12
-    dna_blocks = [ 
+    dna_blocks = [
         #b, e1,  c, n, s, e2
         ['DnaBlock3', 2,  12, 1, 1, 0], #1 112x112 (1)
         ['DnaBlock3', 6,  16, 1, 2, 4], #2 56x56 (1)
@@ -434,7 +434,7 @@ def mobile_former_96m(pretrained=False, **kwargs):
         token_num = 4,
         token_dim = 128,
         **common_model_kwargs,
-        **kwargs,   
+        **kwargs,
     )
     model = _create_mobile_former("mobile_former_96m", pretrained, **model_kwargs)
     return model
@@ -443,7 +443,7 @@ def mobile_former_96m(pretrained=False, **kwargs):
 def mobile_former_52m(pretrained=False, **kwargs):
 
     #stem = 8
-    dna_blocks = [ 
+    dna_blocks = [
         #b, e1,  c, n, s, e2
         ['DnaBlock3', 3,  12, 1, 2, 0], #1 56x56 (2)
         ['DnaBlock',  3,  12, 1, 1, 3], #2
@@ -469,7 +469,7 @@ def mobile_former_52m(pretrained=False, **kwargs):
         token_num = 3,
         token_dim = 128,
         **common_model_kwargs,
-        **kwargs,   
+        **kwargs,
     )
     model = _create_mobile_former("mobile_former_52m", pretrained, **model_kwargs)
     return model
@@ -478,7 +478,7 @@ def mobile_former_52m(pretrained=False, **kwargs):
 def mobile_former_26m(pretrained=False, **kwargs):
 
     #stem = 8
-    dna_blocks = [ 
+    dna_blocks = [
         #b, e1,  c, n, s, e2
         ['DnaBlock3', 3,  12, 1, 2, 0], #1 56x56 (2)
         ['DnaBlock',  3,  12, 1, 1, 3], #2
@@ -504,7 +504,7 @@ def mobile_former_26m(pretrained=False, **kwargs):
         token_num = 3,
         token_dim = 128,
         **common_model_kwargs,
-        **kwargs,   
+        **kwargs,
     )
     model = _create_mobile_former("mobile_former_26m", pretrained, **model_kwargs)
     return model
