@@ -1037,7 +1037,8 @@ class MergeClassifier(nn.Module):
         x = torch.cat(ps, dim=1)
         x = self.fc(x)
 
-        x = self.classifier(x)
+        # saher: I removed this
+        # x = self.classifier(x)
         return x
 
 
